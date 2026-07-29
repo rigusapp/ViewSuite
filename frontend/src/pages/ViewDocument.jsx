@@ -128,9 +128,10 @@ export default function ViewDocument() {
             />
           ) : (
             <iframe
-              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
-              title="Slide View"
+              src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`}
+              title="Full PowerPoint View"
               className="w-full h-full border-0"
+              allowFullScreen
             />
           )}
         </div>

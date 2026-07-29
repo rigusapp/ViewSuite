@@ -12,7 +12,7 @@ export default function PresentationView() {
   useEffect(() => {
     fetchDocumentDetails();
 
-    // Sync via LocalStorage (Sangat Stabil untuk OBS)
+    // Sync via LocalStorage
     const checkStorage = () => {
       const saved = localStorage.getItem(`doc_slide_${id}`);
       if (saved) {
@@ -20,7 +20,6 @@ export default function PresentationView() {
       }
     };
 
-    // Jalankan interval polling ringan khusus OBS Browser Source (tiap 300ms)
     const interval = setInterval(checkStorage, 300);
 
     const handleStorageChange = (e) => {
@@ -70,12 +69,12 @@ export default function PresentationView() {
           className="w-full h-full border-0"
         />
       ) : (
-        /* Jika PPTX, tampilkan iframe Office Embed */
+        /* Menggunakan Full PowerPoint Web View (/op/view.aspx) */
         <iframe
-          key={`obs_ppt_${currentSlide}`}
-          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
+          src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`}
           title="OBS Slide View"
           className="w-full h-full border-0"
+          allowFullScreen
         />
       )}
     </div>
