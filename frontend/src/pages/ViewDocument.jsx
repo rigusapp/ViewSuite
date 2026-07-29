@@ -1,153 +1,225 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { ArrowLeft, Share2, Download, Lock, Globe } from 'lucide-react';
-import DocxViewer from '../components/viewers/DocxViewer';
-import ImageViewer from '../components/viewers/ImageViewer';
-import TextViewer from '../components/viewers/TextViewer';
+import { 
+  ArrowLeft, 
+  ChevronLeft, 
+  ChevronRight, 
+  ZoomIn, 
+  ZoomOut, 
+  Download, 
+  Share2, 
+  Globe, 
+  Lock 
+} from 'lucide-react';
 
 export default function ViewDocument() {
   const { id } = useParams();
-  const [doc, setDoc] = useState(null);
-  const [fileUrl, setFileUrl] = useState(null);
+  const navigate = useNavigate();
+  
+  const [docData, setDocData] = useState(null);
+  const [fileUrl, setFileUrl] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
+
+  // State untuk kontrol viewer (Page & Zoom)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
-    async function loadDoc() {
-      try {
-        setLoading(true);
-        const { data, error: fetchErr } = await supabase
-          .from('documents')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (fetchErr || !data) throw new Error('Dokumen tidak ditemukan atau tidak memiliki akses.');
-
-        setDoc(data);
-
-        if (data.visibility === 'public') {
-          const { data: pubUrl } = supabase.storage
-            .from('documents')
-            .getPublicUrl(data.storage_path);
-          setFileUrl(pubUrl.publicUrl);
-        } else {
-          const { data: signedData, error: signedErr } = await supabase.storage
-            .from('documents')
-            .createSignedUrl(data.storage_path, 3600);
-
-          if (signedErr) throw signedErr;
-          setFileUrl(signedData.signedUrl);
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDoc();
+    fetchDocumentDetails();
   }, [id]);
 
-  const copyShareLink = () => {
+  const fetchDocumentDetails = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // 1. Ambil metadata dari tabel documents
+      const { data: doc, error: dbError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (dbError || !doc) throw new Error('Dokumen tidak ditemukan atau akses ditolak.');
+
+      setDocData(doc);
+
+      // 2. Dapatkan public URL / signed URL dari Supabase Storage
+      const { data: urlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(doc.storage_path);
+
+      setFileUrl(urlData.publicUrl);
+    } catch (err) {
+      setError(err.message || 'Gagal memuat dokumen.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+
+  const handleZoomIn = () => {
+    if (zoomLevel < 200) setZoomLevel((prev) => prev + 25);
+  };
+
+  const handleZoomOut = () => {
+    if (zoomLevel > 50) setZoomLevel((prev) => prev - 25);
+  };
+
+  const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    alert('Link disalin ke clipboard!');
+    alert('Tautan dokumen berhasil disalin ke clipboard!');
   };
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center text-gray-500">Memuat Dokumen...</div>;
-  }
-
-  if (error) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center p-4 text-center">
-        <h2 className="text-2xl font-bold text-red-500 mb-2">Akses Terbatas</h2>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <Link to="/dashboard" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          Kembali ke Dashboard
-        </Link>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
+        Memuat viewer dokumen...
       </div>
     );
   }
 
-  const renderViewer = () => {
-    const ext = doc.extension.toLowerCase();
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-red-600 p-4">
+        <h2 className="text-xl font-bold mb-2">Terjadi Kesalahan</h2>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">{error}</p>
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+        >
+          Kembali ke Dashboard
+        </button>
+      </div>
+    );
+  }
 
-    if (['jpg', 'jpeg', 'png', 'webp', 'svg'].includes(ext)) {
-      return <ImageViewer url={fileUrl} alt={doc.original_name} />;
-    }
-    if (['txt', 'md'].includes(ext)) {
-      return <TextViewer url={fileUrl} isMarkdown={ext === 'md'} />;
-    }
-    if (ext === 'docx') {
-      return <DocxViewer url={fileUrl} />;
-    }
-    // PDF / Office Viewer Fallback dengan Google Docs Embed Viewer
-    if (['pdf', 'ppt', 'pptx', 'xls', 'xlsx', 'doc'].includes(ext)) {
-      const googleDocsUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-      return (
-        <iframe
-          src={googleDocsUrl}
-          className="w-full h-full border-0"
-          title="Document Viewer"
-        />
-      );
-    }
-
-    return <div className="p-8 text-center text-gray-500">Format file ini tidak mendukung preview langsung.</div>;
-  };
+  const isPdf = docData?.mime_type === 'application/pdf';
+  const isImage = docData?.mime_type?.startsWith('image/');
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 dark:text-white">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-800 border-b shadow-sm">
-        <div className="flex items-center space-x-4">
-          <Link to="/dashboard" className="p-2 hover:bg-gray-100 rounded-full transition">
-            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </Link>
-          <div>
-            <h1 className="font-semibold text-gray-800 dark:text-white text-lg truncate max-w-md">
-              {doc.original_name}
-            </h1>
-            <span className="flex items-center text-xs text-gray-500 dark:text-gray-400 gap-1 mt-0.5">
-              {doc.visibility === 'public' ? (
-                <>
-                  <Globe className="w-3 h-3 text-green-500" /> Public
-                </>
-              ) : (
-                <>
-                  <Lock className="w-3 h-3 text-amber-500" /> Private
-                </>
-              )}
-            </span>
-          </div>
+    <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+      {/* HEADER NAVIGASI VIEWER */}
+      <header className="h-14 bg-gray-800 border-b border-gray-700 px-4 flex items-center justify-between z-20">
+        {/* Sisi Kiri: Tombol Back & Nama Dokumen */}
+        <div className="flex items-center space-x-3 truncate max-w-xs md:max-w-md">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-1.5 hover:bg-gray-700 rounded-lg text-gray-300 hover:text-white transition"
+            title="Kembali"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <span className="font-medium text-sm truncate">{docData?.original_name}</span>
+          {docData?.visibility === 'public' ? (
+            <Globe className="w-4 h-4 text-green-400 flex-shrink-0" title="Public Document" />
+          ) : (
+            <Lock className="w-4 h-4 text-amber-400 flex-shrink-0" title="Private Document" />
+          )}
         </div>
 
-        <div className="flex items-center space-x-2">
+        {/* Sisi Tengah: Kontrol Halaman (Next / Prev) */}
+        <div className="flex items-center space-x-2 bg-gray-900/60 px-3 py-1 rounded-lg">
           <button
-            onClick={copyShareLink}
-            className="flex items-center space-x-2 px-3 py-1.5 border rounded-lg hover:bg-gray-50 text-sm font-medium transition"
+            onClick={handlePrevPage}
+            disabled={currentPage <= 1}
+            className="p-1 hover:bg-gray-700 rounded disabled:opacity-40 disabled:hover:bg-transparent transition"
+            title="Halaman Sebelumnya"
           >
-            <Share2 className="w-4 h-4" />
-            <span>Bagikan</span>
+            <ChevronLeft className="w-5 h-5" />
           </button>
+          <span className="text-xs font-mono">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage >= totalPages}
+            className="p-1 hover:bg-gray-700 rounded disabled:opacity-40 disabled:hover:bg-transparent transition"
+            title="Halaman Selanjutnya"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Sisi Kanan: Zoom, Share, Download */}
+        <div className="flex items-center space-x-2">
+          <div className="hidden sm:flex items-center space-x-1 bg-gray-900/60 px-2 py-1 rounded-lg mr-2">
+            <button
+              onClick={handleZoomOut}
+              className="p-1 hover:bg-gray-700 rounded transition"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono w-12 text-center">{zoomLevel}%</span>
+            <button
+              onClick={handleZoomIn}
+              className="p-1 hover:bg-gray-700 rounded transition"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={handleShare}
+            className="p-1.5 hover:bg-gray-700 rounded-lg text-gray-300 hover:text-white transition"
+            title="Bagikan Tautan"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+
           <a
             href={fileUrl}
-            download={doc.original_name}
+            download={docData?.original_name}
             target="_blank"
-            rel="noreferrer"
-            className="flex items-center space-x-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-medium transition"
           >
             <Download className="w-4 h-4" />
-            <span>Unduh</span>
+            <span className="hidden sm:inline">Download</span>
           </a>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-hidden relative">
-        {renderViewer()}
+      {/* AREA DOKUMEN / RENDERING */}
+      <main className="flex-1 overflow-auto p-4 flex items-center justify-center bg-gray-950">
+        <div 
+          className="transition-all duration-200 shadow-2xl rounded-lg overflow-hidden bg-white max-w-full"
+          style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center' }}
+        >
+          {isImage ? (
+            <img 
+              src={fileUrl} 
+              alt={docData?.original_name} 
+              className="max-h-[80vh] object-contain mx-auto"
+            />
+          ) : isPdf ? (
+            /* PDF Iframe Viewer standar browser */
+            <iframe
+              src={`${fileUrl}#page=${currentPage}`}
+              title={docData?.original_name}
+              className="w-[800px] h-[80vh] border-0"
+            />
+          ) : (
+            /* Fallback Viewer via Office / Google Doc Viewer untuk Office Files */
+            <iframe
+              src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+              title={docData?.original_name}
+              className="w-[800px] h-[80vh] border-0"
+            />
+          )}
+        </div>
       </main>
     </div>
   );
