@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { ArrowLeft, Video } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function ViewDocument() {
   const { id } = useParams();
@@ -29,12 +29,6 @@ export default function ViewDocument() {
     }
   };
 
-  const copyObsLink = () => {
-    const obsUrl = `${window.location.origin}/#/present/${id}`;
-    navigator.clipboard.writeText(obsUrl);
-    alert('Tautan OBS Browser Source berhasil disalin!\n\nURL: ' + obsUrl);
-  };
-
   if (loading) return <div className="h-screen bg-gray-950 text-white flex items-center justify-center font-mono">Memuat Dokumen...</div>;
 
   const isPdf = docData?.mime_type === 'application/pdf' || docData?.original_name?.toLowerCase().endsWith('.pdf');
@@ -51,19 +45,8 @@ export default function ViewDocument() {
         </div>
       </header>
 
-      {/* AREA VIEWER DENGAN TOMBOL OBS DI SAMPING MENU OFFICE */}
+      {/* AREA VIEWER FULLSCREEN */}
       <main className="flex-1 w-full h-full bg-black overflow-hidden m-0 p-0 relative">
-        {/* TOMBOL COPY LINK OBS (DIKUSTOM DI SAMPING MENU OFFICE) */}
-        <div className="absolute top-2 right-4 z-30">
-          <button
-            onClick={copyObsLink}
-            className="flex items-center space-x-1.5 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition opacity-90 hover:opacity-100"
-          >
-            <Video className="w-4 h-4" />
-            <span>Copy Link OBS</span>
-          </button>
-        </div>
-
         {isPdf ? (
           <iframe
             src={`${fileUrl}#toolbar=0&navpanes=0`}
@@ -71,7 +54,6 @@ export default function ViewDocument() {
             className="w-full h-full border-0"
           />
         ) : (
-          /* EMBED VIEW TANPA LOGO MERAH POWERPOINT */
           <iframe
             src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}&action=embedview`}
             title="Office View"
