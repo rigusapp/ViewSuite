@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { ArrowLeft, Download, Share2, Globe, Lock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Globe, Lock, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ViewDocument() {
   const { id } = useParams();
@@ -11,6 +11,7 @@ export default function ViewDocument() {
   const [fileUrl, setFileUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pdfPage, setPdfPage] = useState(1);
 
   useEffect(() => {
     fetchDocumentDetails();
@@ -50,7 +51,7 @@ export default function ViewDocument() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-gray-300 font-medium">
+      <div className="h-screen flex items-center justify-center bg-gray-950 text-gray-300 font-medium">
         Memuat viewer dokumen...
       </div>
     );
@@ -58,7 +59,7 @@ export default function ViewDocument() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-red-500 p-4 text-center">
+      <div className="h-screen flex flex-col items-center justify-center bg-gray-950 text-red-500 p-4 text-center">
         <h2 className="text-xl font-bold mb-2">Terjadi Kesalahan</h2>
         <p className="mb-4 text-sm text-gray-400">{error}</p>
         <button
@@ -71,13 +72,17 @@ export default function ViewDocument() {
     );
   }
 
-  const isPdf = docData?.mime_type === 'application/pdf';
+  const isPdf = docData?.mime_type === 'application/pdf' || docData?.original_name?.toLowerCase().endsWith('.pdf');
   const isImage = docData?.mime_type?.startsWith('image/');
+
+  // Menggunakan Microsoft Office Online Viewer sebagai alternatif Google jika file adalah Office/PPT
+  const officeViewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
 
   return (
     <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
       {/* HEADER NAVIGASI */}
-      <header className="h-14 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between z-10 shrink-0">
+      <header className="h-14 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center space-x-3 truncate">
           <button
             onClick={() => navigate('/dashboard')}
@@ -95,6 +100,25 @@ export default function ViewDocument() {
             <Lock className="w-4 h-4 text-amber-400 shrink-0" title="Private Document" />
           )}
         </div>
+
+        {/* Khusus PDF: Tombol ganti halaman manual di header */}
+        {isPdf && (
+          <div className="flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-lg">
+            <button
+              onClick={() => setPdfPage((p) => Math.max(1, p - 1))}
+              className="p-1 hover:bg-gray-700 rounded transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono">Halaman {pdfPage}</span>
+            <button
+              onClick={() => setPdfPage((p) => p + 1)}
+              className="p-1 hover:bg-gray-700 rounded transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center space-x-2">
           <button
@@ -126,8 +150,8 @@ export default function ViewDocument() {
         </div>
       </header>
 
-      {/* AREA VIEWER UTAMA (FULL SCREEN DISPLAY) */}
-      <main className="flex-1 w-full h-[calc(100vh-56px)] bg-gray-950 flex items-center justify-center overflow-hidden">
+      {/* AREA VIEWER */}
+      <main className="flex-1 w-full bg-gray-950 flex items-center justify-center overflow-hidden">
         {isImage ? (
           <div className="p-4 max-h-full overflow-auto">
             <img
@@ -138,14 +162,14 @@ export default function ViewDocument() {
           </div>
         ) : isPdf ? (
           <iframe
-            src={`${fileUrl}#toolbar=1`}
+            src={`${fileUrl}#page=${pdfPage}`}
             title={docData?.original_name}
             className="w-full h-full border-0"
           />
         ) : (
-          /* Google Docs Viewer untuk Office Files (PPT, DOCX, XLSX) */
+          /* Office / PPT Viewer */
           <iframe
-            src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+            src={googleViewerUrl}
             title={docData?.original_name}
             className="w-full h-full border-0"
           />
