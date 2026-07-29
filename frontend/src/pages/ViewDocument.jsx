@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { 
   ArrowLeft, Download, Share2, Globe, Lock, ExternalLink, 
-  ChevronLeft, ChevronRight, Play, Maximize 
+  ChevronLeft, ChevronRight, Play, Maximize, Video 
 } from 'lucide-react';
 
 export default function ViewDocument() {
@@ -15,17 +15,19 @@ export default function ViewDocument() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // State untuk kontrol Slide / Halaman
   const [currentSlide, setCurrentSlide] = useState(1);
-  const [isPresenting, setIsPresenting] = useState(false);
-  
-  const presenterWindowRef = useRef(null);
+  const channelRef = useRef(null);
 
   useEffect(() => {
     fetchDocumentDetails();
+
+    // Buat saluran komunikasi ke halaman OBS
+    const channel = new BroadcastChannel(`doc_presentation_${id}`);
+    channelRef.current = channel;
+
+    return () => channel.close();
   }, [id]);
 
-  // Shortcut Keyboard: F5 untuk Mulai Presentasi, Panah Kiri/Kanan untuk Next/Prev
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'F5') {
@@ -69,126 +71,80 @@ export default function ViewDocument() {
     }
   };
 
-  // Navigasi Slide
-  const nextSlide = () => {
-    setCurrentSlide((prev) => {
-      const next = prev + 1;
-      updatePresenterWindow(next);
-      return next;
-    });
+  const updateSlide = (slideNum) => {
+    setCurrentSlide(slideNum);
+    // Kirim nomor slide terbaru ke OBS / Presenter Window
+    if (channelRef.current) {
+      channelRef.current.postMessage({ type: 'CHANGE_SLIDE', slide: slideNum });
+    }
   };
 
-  const prevSlide = () => {
-    setCurrentSlide((prev) => {
-      const next = Math.max(1, prev - 1);
-      updatePresenterWindow(next);
-      return next;
-    });
-  };
+  const nextSlide = () => updateSlide(currentSlide + 1);
+  const prevSlide = () => updateSlide(Math.max(1, currentSlide - 1));
 
-  // Membuka Jendela Baru / Full Screen Layar Kedua untuk Presentasi
+  // Buka halaman presentasi di tab/jendela baru
   const startPresentation = () => {
-    setIsPresenting(true);
-    
-    // Buka jendela baru di monitor kedua/audiens jika ada
-    const newWindow = window.open(
-      '',
-      'SlideShow',
-      'width=1280,height=720,menubar=no,toolbar=no,location=no'
-    );
-
-    if (newWindow) {
-      presenterWindowRef.current = newWindow;
-      updatePresenterWindow(currentSlide);
-    } else {
-      alert('Mohon izinkan Popup di browser Anda untuk membuka Presenter View!');
-    }
+    const obsUrl = `${window.location.origin}/present/${id}`;
+    window.open(obsUrl, 'SlideShow', 'width=1280,height=720');
   };
 
-  // Update konten di jendela audiens secara otomatis
-  const updatePresenterWindow = (slideNum) => {
-    if (presenterWindowRef.current && !presenterWindowRef.current.closed) {
-      const isOffice = !docData?.original_name?.toLowerCase().endsWith('.pdf');
-      
-      const slideContent = isOffice
-        ? `<iframe src="https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}" style="width:100vw;height:100vh;border:none;"></iframe>`
-        : `<iframe src="${fileUrl}#page=${slideNum}&toolbar=0" style="width:100vw;height:100vh;border:none;"></iframe>`;
-
-      presenterWindowRef.current.document.body.style.margin = '0';
-      presenterWindowRef.current.document.body.style.backgroundColor = '#000';
-      presenterWindowRef.current.document.body.innerHTML = slideContent;
-    }
+  // Salin Link Khusus untuk OBS Studio
+  const copyObsLink = () => {
+    const obsUrl = `${window.location.origin}/present/${id}`;
+    navigator.clipboard.writeText(obsUrl);
+    alert('Tautan OBS Browser Source berhasil disalin!\n\nPastekan URL ini pada OBS Studio > Add Source > Browser.');
   };
 
   if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-950 text-gray-300">
-        Memuat Presenter Mode...
-      </div>
-    );
+    return <div className="h-screen flex items-center justify-center bg-gray-950 text-gray-300">Memuat Presenter Mode...</div>;
   }
 
   const isPdf = docData?.mime_type === 'application/pdf' || docData?.original_name?.toLowerCase().endsWith('.pdf');
 
   return (
     <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
-      {/* HEADER NAVIGASI & PRESENTER BAR */}
+      {/* HEADER NAVIGASI */}
       <header className="h-14 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center space-x-3 truncate">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition"
-          >
+          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="font-medium text-sm truncate max-w-xs">{docData?.original_name}</span>
         </div>
 
-        {/* KONTROL SLIDE / NEXT / PREV */}
+        {/* KONTROL SLIDE */}
         <div className="flex items-center space-x-3 bg-gray-800 px-4 py-1.5 rounded-xl border border-gray-700">
-          <button
-            onClick={prevSlide}
-            className="p-1.5 hover:bg-gray-700 rounded-lg transition"
-            title="Slide Sebelumnya (Kiri / PageUp)"
-          >
+          <button onClick={prevSlide} className="p-1.5 hover:bg-gray-700 rounded-lg">
             <ChevronLeft className="w-5 h-5" />
           </button>
-
-          <span className="text-sm font-mono font-bold px-2">
-            Slide {currentSlide}
-          </span>
-
-          <button
-            onClick={nextSlide}
-            className="p-1.5 hover:bg-gray-700 rounded-lg transition"
-            title="Slide Selanjutnya (Kanan / Space / PageDown)"
-          >
+          <span className="text-sm font-mono font-bold px-2">Slide {currentSlide}</span>
+          <button onClick={nextSlide} className="p-1.5 hover:bg-gray-700 rounded-lg">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
-        {/* TOMBOL PRESENT / F5 */}
+        {/* TOMBOL PRESENT & LINK OBS */}
         <div className="flex items-center space-x-2">
           <button
+            onClick={copyObsLink}
+            className="flex items-center space-x-1.5 bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+            title="Salin Tautan untuk Browser Source OBS Studio"
+          >
+            <Video className="w-4 h-4" />
+            <span>Copy Link OBS</span>
+          </button>
+
+          <button
             onClick={startPresentation}
-            className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-lg text-xs font-semibold transition"
-            title="Tekan F5 atau Klik untuk Mode Presentasi"
+            className="flex items-center space-x-1.5 bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
           >
             <Play className="w-4 h-4 fill-current" />
             <span>Present (F5)</span>
           </button>
-
-          <a
-            href={fileUrl}
-            download={docData?.original_name}
-            className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition"
-          >
-            <Download className="w-5 h-5" />
-          </a>
         </div>
       </header>
 
-      {/* AREA DOKUMEN / KONTROL LAYAR KEDUA */}
+      {/* AREA SLIDE KONTROL */}
       <main className="flex-1 w-full bg-gray-950 flex flex-col items-center justify-center p-4 overflow-hidden">
         <div className="w-full max-w-5xl h-full bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl relative">
           {isPdf ? (
@@ -198,7 +154,6 @@ export default function ViewDocument() {
               className="w-full h-full border-0"
             />
           ) : (
-            /* Microsoft Office Online Embed dengan Auto-Slide Control */
             <iframe
               src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
               title="Slide View"
@@ -206,10 +161,6 @@ export default function ViewDocument() {
             />
           )}
         </div>
-
-        <p className="text-xs text-gray-500 mt-2">
-          💡 **Tips**: Tekan **F5** atau klik **Present** untuk membuka layar terpisah. Gunakan tombol **Panah Kanan / Space** untuk pindah slide.
-        </p>
       </main>
     </div>
   );

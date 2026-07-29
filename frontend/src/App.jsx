@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ViewDocument from './pages/ViewDocument';
+import PresentationView from './pages/PresentationView';
 
 // Proteksi Halaman yang Butuh Login
 function ProtectedRoute({ children }) {
@@ -52,6 +53,10 @@ export default function App() {
             }
           />
           <Route path="/view/:id" element={<ViewDocument />} />
+          
+          {/* Rute Khusus Tampilan Presentasi / OBS Studio (Tanpa UI Header) */}
+          <Route path="/present/:id" element={<PresentationView />} />
+          
           {/* Wildcard jika URL tidak ditemukan */}
           <Route path="*" element={<RootRedirect />} />
         </Routes>
