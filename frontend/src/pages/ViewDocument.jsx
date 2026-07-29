@@ -41,29 +41,29 @@ export default function ViewDocument() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
-      {/* HEADER NAVIGASI */}
-      <header className="h-14 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between shrink-0">
+      {/* HEADER UTAMA */}
+      <header className="h-12 bg-gray-900 border-b border-gray-800 px-4 flex items-center justify-between shrink-0 z-20">
         <div className="flex items-center space-x-3 truncate">
-          <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition">
+          <button onClick={() => navigate('/dashboard')} className="p-1.5 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="font-medium text-sm truncate max-w-sm">{docData?.original_name}</span>
         </div>
+      </header>
 
-        {/* TOMBOL LINK OBS */}
-        <div className="flex items-center space-x-2">
+      {/* AREA VIEWER DENGAN TOMBOL OBS DI SAMPING MENU OFFICE */}
+      <main className="flex-1 w-full h-full bg-black overflow-hidden m-0 p-0 relative">
+        {/* TOMBOL COPY LINK OBS (DIKUSTOM DI SAMPING MENU OFFICE) */}
+        <div className="absolute top-2 right-4 z-30">
           <button
             onClick={copyObsLink}
-            className="flex items-center space-x-1.5 bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+            className="flex items-center space-x-1.5 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-lg transition opacity-90 hover:opacity-100"
           >
             <Video className="w-4 h-4" />
             <span>Copy Link OBS</span>
           </button>
         </div>
-      </header>
 
-      {/* AREA SLIDE FULLSCREEN (TANPA KOSONG DI KIRI & KANAN) */}
-      <main className="flex-1 w-full h-full bg-black overflow-hidden m-0 p-0">
         {isPdf ? (
           <iframe
             src={`${fileUrl}#toolbar=0&navpanes=0`}
@@ -71,9 +71,10 @@ export default function ViewDocument() {
             className="w-full h-full border-0"
           />
         ) : (
+          /* EMBED VIEW TANPA LOGO MERAH POWERPOINT */
           <iframe
-            src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`}
-            title="Full PowerPoint View"
+            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}&action=embedview`}
+            title="Office View"
             className="w-full h-full border-0"
             allowFullScreen
           />
