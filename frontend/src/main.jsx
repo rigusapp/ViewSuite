@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { Component } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
-class ErrorBoundary extends React.Component {
+// Class ErrorBoundary untuk menangkap error runtime
+class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -20,9 +21,11 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '20px', color: 'red', fontFamily: 'sans-serif' }}>
-          <h2>Terjadi Kesalahan Aplikasi!</h2>
-          <pre>{this.state.error?.toString()}</pre>
+        <div className="p-8 text-red-600 font-sans max-w-xl mx-auto">
+          <h2 className="text-xl font-bold mb-2">Terjadi Kesalahan Aplikasi!</h2>
+          <pre className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm overflow-auto">
+            {this.state.error?.toString()}
+          </pre>
         </div>
       );
     }
