@@ -44,6 +44,8 @@ export default function App() {
           {/* Halaman Utama / Redirect otomatis */}
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
+          
+          {/* Halaman Khusus User Terautentikasi */}
           <Route
             path="/dashboard"
             element={
@@ -52,9 +54,9 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Halaman Publik (Dapat Diakses Siapa Saja Tanpa Login) */}
           <Route path="/view/:id" element={<ViewDocument />} />
-          
-          {/* Rute Khusus Tampilan Presentasi / OBS Studio (Tanpa UI Header) */}
           <Route path="/present/:id" element={<PresentationView />} />
           
           {/* Wildcard jika URL tidak ditemukan */}
