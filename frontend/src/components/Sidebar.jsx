@@ -1,11 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, Plus } from 'lucide-react';
+import { LayoutDashboard, Plus } from 'lucide-react';
 
 export default function Sidebar({ onOpenUpload }) {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'My Documents', path: '/my-documents', icon: FolderKanban },
   ];
 
   return (

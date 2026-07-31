@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { X, UploadCloud, Lock, Globe } from 'lucide-react';
+import { X, UploadCloud } from 'lucide-react';
 import { useDocuments } from '../hooks/useDocuments';
 
 export default function UploadModal({ isOpen, onClose }) {
   const { uploadDocument } = useDocuments();
   const [selectedFile, setSelectedFile] = useState(null);
-  const [isPublic, setIsPublic] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -25,7 +24,8 @@ export default function UploadModal({ isOpen, onClose }) {
     try {
       setUploading(true);
       setError(null);
-      await uploadDocument(selectedFile, isPublic);
+      // Panggil uploadDocument hanya dengan file
+      await uploadDocument(selectedFile);
       setSelectedFile(null);
       onClose();
     } catch (err) {
@@ -61,22 +61,6 @@ export default function UploadModal({ isOpen, onClose }) {
             </span>
             <input type="file" onChange={handleFileChange} className="hidden" />
           </label>
-
-          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-            <div className="flex items-center space-x-2">
-              {isPublic ? <Globe className="w-5 h-5 text-green-500" /> : <Lock className="w-5 h-5 text-amber-500" />}
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                Akses: {isPublic ? 'Public' : 'Private'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsPublic(!isPublic)}
-              className="text-xs bg-gray-200 dark:bg-gray-600 px-3 py-1 rounded-lg text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-300"
-            >
-              Ubah
-            </button>
-          </div>
 
           <button
             type="submit"
