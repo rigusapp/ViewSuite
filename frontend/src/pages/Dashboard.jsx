@@ -2,15 +2,19 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import UploadModal from '../components/UploadModal';
+import QrModal from '../components/QrModal';
 import { useDocuments } from '../hooks/useDocuments';
 import { formatBytes } from '../utils/fileHelpers';
-import { FileText, HardDrive, Eye, Trash2 } from 'lucide-react';
+import { FileText, HardDrive, Eye, Trash2, QrCode } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const { documents, loading, deleteDocument } = useDocuments();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  
+  // State untuk modal QR
+  const [selectedDocForQr, setSelectedDocForQr] = useState(null);
 
   const totalStorage = documents.reduce((acc, doc) => acc + (doc.size || 0), 0);
 
@@ -81,6 +85,15 @@ export default function Dashboard() {
                     </div>
                     
                     <div className="flex items-center space-x-1 shrink-0">
+                      {/* Tombol QR Code */}
+                      <button
+                        onClick={() => setSelectedDocForQr(doc)}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-emerald-500 transition"
+                        title="Tampilkan QR Code"
+                      >
+                        <QrCode className="w-5 h-5" />
+                      </button>
+
                       {/* Tombol Lihat / View */}
                       <Link
                         to={`/view/${doc.id}`}
@@ -109,6 +122,13 @@ export default function Dashboard() {
       </div>
 
       <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      
+      {/* Modal Pop-up QR Code */}
+      <QrModal
+        isOpen={!!selectedDocForQr}
+        onClose={() => setSelectedDocForQr(null)}
+        doc={selectedDocForQr}
+      />
     </div>
   );
 }
