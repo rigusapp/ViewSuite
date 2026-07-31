@@ -4,14 +4,30 @@ import Sidebar from '../components/Sidebar';
 import UploadModal from '../components/UploadModal';
 import { useDocuments } from '../hooks/useDocuments';
 import { formatBytes } from '../utils/fileHelpers';
-import { FileText, HardDrive, Eye } from 'lucide-react';
+import { FileText, HardDrive, Eye, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { documents, loading } = useDocuments();
+  const { documents, loading, deleteDocument } = useDocuments();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
-  const totalStorage = documents.reduce((acc, doc) => acc + doc.size, 0);
+  const totalStorage = documents.reduce((acc, doc) => acc + (doc.size || 0), 0);
+
+  const handleDelete = async (docId, storagePath, docName) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus "${docName}"?`)) {
+      return;
+    }
+
+    try {
+      setDeletingId(docId);
+      await deleteDocument(docId, storagePath);
+    } catch (err) {
+      alert('Gagal menghapus dokumen: ' + err.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100">
@@ -48,7 +64,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Dokumen Terbaru */}
+          {/* Daftar Dokumen */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Dokumen Terbaru</h2>
             {loading ? (
@@ -57,18 +73,33 @@ export default function Dashboard() {
               <p className="text-gray-500">Belum ada dokumen yang diunggah.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {documents.slice(0, 6).map((doc) => (
+                {documents.map((doc) => (
                   <div key={doc.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center">
                     <div className="truncate mr-2">
                       <p className="font-medium truncate">{doc.original_name}</p>
                       <p className="text-xs text-gray-500">{formatBytes(doc.size)}</p>
                     </div>
-                    <Link
-                      to={`/view/${doc.id}`}
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-blue-600"
-                    >
-                      <Eye className="w-5 h-5" />
-                    </Link>
+                    
+                    <div className="flex items-center space-x-1 shrink-0">
+                      {/* Tombol Lihat / View */}
+                      <Link
+                        to={`/view/${doc.id}`}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-blue-600"
+                        title="Lihat Dokumen"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </Link>
+
+                      {/* Tombol Hapus / Delete */}
+                      <button
+                        onClick={() => handleDelete(doc.id, doc.storage_path, doc.original_name)}
+                        disabled={deletingId === doc.id}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-red-500 transition disabled:opacity-50"
+                        title="Hapus Dokumen"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
